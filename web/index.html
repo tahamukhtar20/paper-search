@@ -20,7 +20,19 @@
       <form id="search" role="search">
         <label for="q">Enter your search query here</label>
         <input id="q" name="q" type="search" placeholder="e.g. shortest path algorithms" autocomplete="off" autofocus />
-        <button class="button" type="submit">Search</button>
+        <div class="actions">
+          <button class="button" type="submit">Search</button>
+          <span class="sort">
+            <label for="sort">Sort by</label>
+            <select id="sort" name="sort">
+              <option value="relevance">Relevance</option>
+              <option value="citations-desc">Citations, most first</option>
+              <option value="citations-asc">Citations, fewest first</option>
+              <option value="year-desc">Year, newest first</option>
+              <option value="year-asc">Year, oldest first</option>
+            </select>
+          </span>
+        </div>
       </form>
       <p class="examples">
         Try:

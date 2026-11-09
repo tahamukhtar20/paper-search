@@ -14,11 +14,13 @@ sum over unique query terms t:  (count of t in d / length of d) * log(N / df(t))
 
 where N is the number of documents and df(t) the number containing t.
 
+Results can also be sorted by citations or by year, in either direction. Those sorts only consider papers that contain every query term (falling back to all matches if none do), so a paper that matches one common word can't jump to the top. Ties keep relevance order.
+
 **Static export** (`searchengine/export.py`). The index is split into shards so the browser downloads only what a query needs:
 
 | File | Contents |
 |---|---|
-| `manifest.json` | Document count, document lengths, shard settings, stop words |
+| `manifest.json` | Document count, document lengths, years and citation counts, shard settings, stop words |
 | `forms/NN.json` | Each word in the corpus mapped to its stem, sharded by hash of the word |
 | `terms/NN.json` | Postings for each stem, sharded by hash of the stem |
 | `docs/NNN.json` | Title, authors, year, citations, link and snippet, in blocks of 50 |
@@ -41,6 +43,10 @@ python -m http.server 8000 -d web                                       # open h
 ```
 
 Add more documents to an existing index with `python -m searchengine add more.jsonl`. Input files are JSON Lines with at least `id`, `title` and `content` fields.
+
+## Deployment
+
+Live at [papers.tahamukhtar.com](https://papers.tahamukhtar.com). The `web/` folder, with the exported index inside, is served as static assets by Cloudflare Workers (`wrangler.jsonc`). After exporting, deploy with `npx wrangler deploy`.
 
 ## Tests
 

@@ -1,0 +1,13 @@
+// Static site on Cloudflare Workers (assets only, no Worker code).
+// Deploy:
+//   python -m searchengine build data/papers.jsonl
+//   python -m searchengine export web/index --corpus "The 9,763 most-cited computer science papers on OpenAlex"
+//   npx wrangler deploy
+{
+  "name": "paper-search",
+  "compatibility_date": "2026-11-01",
+  "assets": { "directory": "./web" },
+  "routes": [{ "pattern": "papers.tahamukhtar.com", "custom_domain": true }],
+  "workers_dev": false,
+  "preview_urls": false
+}

@@ -35,15 +35,38 @@ async function search(query) {
   const termShards = await Promise.all(stems.map((s) => fetchJSON(`terms/${shard(s)}.json`)));
 
   const scores = new Map();
+  const matched = new Map(); // doc id -> how many of the query's stems it contains
   stems.forEach((stem, i) => {
     const postings = termShards[i][stem] || [];
     const idf = Math.log(manifest.documents / postings.length);
     for (const [doc, count] of postings) {
       scores.set(doc, (scores.get(doc) || 0) + (count / manifest.lengths[doc]) * idf);
+      matched.set(doc, (matched.get(doc) || 0) + 1);
     }
   });
   const ranked = [...scores].sort((a, b) => b[1] - a[1] || a[0] - b[0]);
-  return { words, stems, ranked };
+  return { words, stems, ranked, matched };
+}
+
+const SORTS = {
+  "relevance": null,
+  "citations-desc": (a, b) => manifest.citations[b] - manifest.citations[a],
+  "citations-asc": (a, b) => manifest.citations[a] - manifest.citations[b],
+  "year-desc": (a, b) => manifest.years[b] - manifest.years[a],
+  "year-asc": (a, b) => manifest.years[a] - manifest.years[b],
+};
+
+// Sorting by citations or year only considers papers containing every query term;
+// otherwise a paper matching one common word could outrank the ones you meant.
+// If no paper has all terms, every match is sorted. Ties keep relevance order.
+function order(result, sort) {
+  const compare = SORTS[sort];
+  if (!compare) return { list: result.ranked, allTerms: false };
+  const all = result.ranked.filter(([doc]) => result.matched.get(doc) === result.stems.length);
+  const pool = all.length ? all : result.ranked;
+  const rank = new Map(pool.map(([doc], i) => [doc, i]));
+  const list = [...pool].sort(([a], [b]) => compare(a, b) || rank.get(a) - rank.get(b));
+  return { list, allTerms: all.length > 0 };
 }
 
 async function docs(ids) {
@@ -72,10 +95,10 @@ function authors(list) {
   return list.length > 3 ? `${list.slice(0, 3).join(", ")} et al.` : list.join(", ");
 }
 
-let current = { ranked: [], shown: 0 };
+let current = { list: [], shown: 0 };
 
 async function showMore() {
-  const { ranked, words, stems } = current;
+  const { list: ranked, words, stems } = current;
   const slice = ranked.slice(current.shown, current.shown + PAGE);
   const found = await docs(slice.map(([id]) => id));
   const list = $("results");
@@ -91,35 +114,57 @@ async function showMore() {
   $("more").hidden = current.shown >= ranked.length;
 }
 
-async function run(query) {
+const SORT_LABELS = {
+  "citations-desc": "most cited first",
+  "citations-asc": "least cited first",
+  "year-desc": "newest first",
+  "year-asc": "oldest first",
+};
+
+async function run(query, sort) {
   const started = performance.now();
   const result = await search(query);
+  const { list, allTerms } = order(result, sort);
   const ms = performance.now() - started;
-  current = { ...result, shown: 0 };
+  current = { ...result, list, shown: 0 };
   $("results").innerHTML = "";
   if (!result.words.length) {
     $("status").textContent = "";
     $("more").hidden = true;
     return;
   }
-  $("status").textContent = result.ranked.length
-    ? `${number.format(result.ranked.length)} results in ${ms.toFixed(0)} ms`
-    : `No papers match “${query}”.`;
+  if (!list.length) {
+    $("status").textContent = `No papers match “${query}”.`;
+  } else if (SORT_LABELS[sort] && allTerms && result.stems.length > 1) {
+    $("status").textContent = `${number.format(list.length)} papers contain all terms, ${SORT_LABELS[sort]} (${ms.toFixed(0)} ms)`;
+  } else if (SORT_LABELS[sort]) {
+    $("status").textContent = `${number.format(list.length)} results, ${SORT_LABELS[sort]} (${ms.toFixed(0)} ms)`;
+  } else {
+    $("status").textContent = `${number.format(list.length)} results in ${ms.toFixed(0)} ms`;
+  }
   await showMore();
 }
 
 async function init() {
   manifest = await fetchJSON("manifest.json");
-  $("corpus").textContent = `${manifest.corpus}. Index built ${manifest.built}.`;
+  $("corpus").textContent = `${manifest.corpus}.`;
 
   const form = $("search");
   const input = $("q");
+  const sort = $("sort");
+  const submit = () => {
+    const q = input.value.trim();
+    const params = new URLSearchParams();
+    if (q) params.set("q", q);
+    if (q && sort.value !== "relevance") params.set("sort", sort.value);
+    history.replaceState(null, "", params.size ? `?${params}` : location.pathname);
+    run(q, sort.value);
+  };
   form.addEventListener("submit", (e) => {
     e.preventDefault();
-    const q = input.value.trim();
-    history.replaceState(null, "", q ? `?q=${encodeURIComponent(q)}` : location.pathname);
-    run(q);
+    submit();
   });
+  sort.addEventListener("change", () => input.value.trim() && submit());
   $("more").addEventListener("click", showMore);
   document.querySelectorAll("[data-example]").forEach((a) =>
     a.addEventListener("click", (e) => {
@@ -129,10 +174,12 @@ async function init() {
     }),
   );
 
-  const q = new URLSearchParams(location.search).get("q");
+  const params = new URLSearchParams(location.search);
+  if (params.get("sort") in SORTS) sort.value = params.get("sort");
+  const q = params.get("q");
   if (q) {
     input.value = q;
-    run(q);
+    run(q, sort.value);
   }
 }
 

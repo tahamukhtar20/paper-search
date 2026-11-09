@@ -73,6 +73,9 @@ def export(index: InvertedIndex, out: Path, corpus: str = "") -> None:
             "documents": len(index.docs),
             "terms": len(index.postings),
             "lengths": index.lengths,
+            # For sorting every match by year or citations without fetching document blocks.
+            "years": [doc.get("year") or 0 for doc in index.docs],
+            "citations": [doc.get("citations") or 0 for doc in index.docs],
             "shards": SHARDS,
             "docBlock": DOC_BLOCK,
             "stopWords": sorted(STOP_WORDS),
