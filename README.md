@@ -1,98 +1,58 @@
-# Search-Engine-Master[Cyber Nerd]
+# Paper Search
 
+A search engine over the ~10,000 most-cited computer science papers, from the 1840s to today. A Python indexer builds an inverted index with TF-IDF ranking, then exports it as small static files. The web page searches those files directly in the browser, so the whole thing is hosted as a static site with no server.
 
-## Dataset
-https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/RBKVBM (Harvard Dataverse NELA-GT-2021)
+## How it works
 
+**Indexing** (`searchengine/index.py`). Titles and abstracts are lowercased, split into words, stripped of stop words and stemmed with the Snowball stemmer. Title words count three times. The index stores raw counts: for each term, the documents that contain it and how often, plus each document's length. Scores are computed at query time, so new documents can be added at any point without rewriting existing entries.
 
-## Table of Contents
+**Ranking.** For a query, each matching document scores
 
-- [Introduction](#introduction)
-- [Details](#Details)
-- [Setting up the project](#Setting-up-the-project)
-- [Stats](#stats)
-- [Screen Shots](#screens-shots)
+```
+sum over unique query terms t:  (count of t in d / length of d) * log(N / df(t))
+```
 
+where N is the number of documents and df(t) the number containing t.
 
-## Introduction
+**Static export** (`searchengine/export.py`). The index is split into shards so the browser downloads only what a query needs:
 
-This is a search engine that uses the TF-IDF algorithm to rank the results. It uses various techniques to dynamically add data to the index and to improve the search results. It has instantaneously fast search results for both one word and multi-word searches.
-There is also a web interface that allows you to search for a query and view the results.
+| File | Contents |
+|---|---|
+| `manifest.json` | Document count, document lengths, shard settings, stop words |
+| `forms/NN.json` | Each word in the corpus mapped to its stem, sharded by hash of the word |
+| `terms/NN.json` | Postings for each stem, sharded by hash of the stem |
+| `docs/NNN.json` | Title, authors, year, citations, link and snippet, in blocks of 50 |
 
-## Details
+Shards are picked with 32-bit FNV-1a, implemented identically in Python and in `web/search.js`. A typical query fetches a few small shards (about 25 KB each) and ranks thousands of matches in a few tens of milliseconds.
 
-### Indexing
+## Running locally
 
-The index is stored in a JSON file. The index is a dictionary where the keys are the words and the values are the documents that contain the word. The documents are stored as a dictionary where the keys are the document IDs and the values are the TF-IDF score of the word in the document.
+Requires Python 3.10 or newer.
 
-### Ranking
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
 
-The ranking is done using the TF-IDF algorithm. The TF-IDF score of a word in a document is calculated as follows:
+python scripts/fetch_corpus.py --limit 10000 --out data/papers.jsonl   # download the corpus
+python -m searchengine build data/papers.jsonl                          # build the index
+python -m searchengine search "shortest path algorithms"                # search from the terminal
+python -m searchengine export web/index --corpus "Most-cited computer science papers"
+python -m http.server 8000 -d web                                       # open http://localhost:8000
+```
 
-`TF-IDF = TF * IDF`
+Add more documents to an existing index with `python -m searchengine add more.jsonl`. Input files are JSON Lines with at least `id`, `title` and `content` fields.
 
-`TF = (Number of times the word appears in the document) / (Total number of words in the document)`
+## Tests
 
-`IDF = log(Total number of documents / Number of documents containing the word)`
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
 
-### Web Interface
+## Data
 
-The web interface is a Flask application that allows you to search for a query and view the results. The results are ranked using the TF-IDF algorithm. The top Ten search results are displayed. The results are displayed in as urls. The results are presorted, so only the search is required to be done dynamically.
+Paper metadata and abstracts come from [OpenAlex](https://openalex.org), released under CC0. `scripts/fetch_corpus.py` takes the most-cited works whose primary field is Computer Science and that have an abstract, skipping duplicate titles.
 
-### Dynamic Indexing
+## License
 
-The index is dynamically updated when a new document is added without deletion of the old index. The new document is added to the index and the TF-IDF scores of the words in the old documents are updated. The TF-IDF scores of the words in the new document are calculated and added to the index.
-
-## Setting up the project
-
-### Requirements
-
-- Python 3.6 or higher
-- Multi-core CPU
-- Enough RAM to store the index
-- Enough disk space to store the index
-- Enough disk space to store the documents
-
-### Installation
-
-- Clone the repository
-- Download the documents from [here](https://dataverse.harvard.edu/api/access/datafile/6078140)
-- Extract the documents to a folder
-- Install the requirements (pip install -r requirements.txt)
-- In terminal run the following commands:
-    - >python
-    - >import nltk
-    - >nltk.download()
-    - Download the complete library from the GUI
-    - >exit()
-- In application_inverted_index.py change the path of the documents folder to the path of the folder where the documents are stored
-### Running
-- Run the application_inverted_index.py file
-- Run the app.py
-- Open the web browser and go to http://127.0.0.1:5000/
-- Click Launch Server
-- Input Absolute path to the folder containing the json you want to dynamically add.
-- Click Add Content
-- Click Search
-- Input the query and click Search
-- The top Ten results are displayed
-
-
-## Stats
-
-- The Dataset contains 1.6 Million articles
-- 200,000 articles have been tested on this code.
-- The python script took less than 3 minutes to parse, create the forward index, lexicon, inverted index, and rank the documents on an 8 core machine.
-- Search Speed is instant, both the single word and multi-word(even whole paragraphs)
-- Ranking can be improved by taking Proximity and Position into consideration as TP-IDF doesn't take Proximity or Position into consideration.
-
-
-
-## Screens Shots
-### Web Interface
-![img.png](img.png)
-### Search Results
-![img_1.png](img_1.png)
-
-
-
+[MPL-2.0](LICENSE)

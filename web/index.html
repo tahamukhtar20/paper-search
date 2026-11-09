@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Paper Search</title>
+    <meta name="description" content="A TF-IDF search engine over the most-cited computer science papers, running entirely in your browser." />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Paper Search</h1>
+        <p class="lede">Search the most-cited computer science papers. Ranking is TF-IDF over titles and abstracts, computed in your browser from a static inverted index.</p>
+      </header>
+
+      <form id="search" role="search">
+        <label class="visually-hidden" for="q">Search papers</label>
+        <input id="q" name="q" type="search" placeholder="e.g. shortest path algorithms" autocomplete="off" autofocus />
+        <button type="submit">Search</button>
+      </form>
+      <p class="examples">
+        Try:
+        <a href="?q=attention+translation" data-example="attention translation">attention translation</a>,
+        <a href="?q=public+key+cryptography" data-example="public key cryptography">public key cryptography</a>,
+        <a href="?q=shortest+path" data-example="shortest path">shortest path</a>
+      </p>
+
+      <p id="status" class="status" aria-live="polite"></p>
+      <ol id="results" class="results"></ol>
+      <button id="more" class="more" type="button" hidden>Show more</button>
+
+      <footer>
+        <p id="corpus"></p>
+        <p>Paper data from <a href="https://openalex.org">OpenAlex</a> (CC0).</p>
+      </footer>
+    </main>
+    <script src="search.js" type="module"></script>
+  </body>
+</html>
