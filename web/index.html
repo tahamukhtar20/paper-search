@@ -8,16 +8,19 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <main>
-      <header>
-        <h1>Paper Search</h1>
-        <p class="lede">Search the most-cited computer science papers. Ranking is TF-IDF over titles and abstracts, computed in your browser from a static inverted index.</p>
-      </header>
+    <header class="site-header">
+      <div class="container">
+        <a class="brand" href="./">Paper Search</a>
+      </div>
+    </header>
+
+    <main class="container">
+      <p class="lede">Search the most-cited computer science papers. Ranking is TF-IDF over titles and abstracts, computed in your browser from a static inverted index.</p>
 
       <form id="search" role="search">
-        <label class="visually-hidden" for="q">Search papers</label>
+        <label for="q">Enter your search query here</label>
         <input id="q" name="q" type="search" placeholder="e.g. shortest path algorithms" autocomplete="off" autofocus />
-        <button type="submit">Search</button>
+        <button class="button" type="submit">Search</button>
       </form>
       <p class="examples">
         Try:
@@ -28,7 +31,7 @@
 
       <p id="status" class="status" aria-live="polite"></p>
       <ol id="results" class="results"></ol>
-      <button id="more" class="more" type="button" hidden>Show more</button>
+      <button id="more" class="button more" type="button" hidden>Show more</button>
 
       <footer>
         <p id="corpus"></p>
