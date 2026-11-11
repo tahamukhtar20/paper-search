@@ -4,9 +4,13 @@ A search engine over the ~10,000 most-cited computer science papers, from the 18
 
 ## How it works
 
-**Indexing** (`searchengine/index.py`). Titles and abstracts are lowercased, split into words, stripped of stop words and stemmed with the Snowball stemmer. Title words count three times. The index stores raw counts: for each term, the documents that contain it and how often, plus each document's length. Scores are computed at query time, so new documents can be added at any point without rewriting existing entries.
+### Indexing
 
-**Ranking.** For a query, each matching document scores
+`searchengine/index.py` builds the index. Titles and abstracts are lowercased, split into words, stripped of stop words and stemmed with the Snowball stemmer. Title words count three times. The index stores raw counts: for each term, the documents that contain it and how often, plus each document's length. Scores are computed at query time, so new documents can be added at any point without rewriting existing entries.
+
+### Ranking
+
+For a query, each matching document scores
 
 ```
 sum over unique query terms t:  (count of t in d / length of d) * log(N / df(t))
@@ -16,7 +20,9 @@ where N is the number of documents and df(t) the number containing t.
 
 Results can also be sorted by citations or by year, in either direction. Those sorts only consider papers that contain every query term (falling back to all matches if none do), so a paper that matches one common word can't jump to the top. Ties keep relevance order.
 
-**Static export** (`searchengine/export.py`). The index is split into shards so the browser downloads only what a query needs:
+### Static export
+
+`searchengine/export.py` writes the static files. The index is split into shards so the browser downloads only what a query needs:
 
 | File | Contents |
 |---|---|
